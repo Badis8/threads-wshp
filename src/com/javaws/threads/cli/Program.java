@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.javaws.threads.service.FileWorker;
+import com.javaws.threads.service.JoinedThreadedFileWorker;
 import com.javaws.threads.service.NaiveCypher;
 import com.javaws.threads.service.Worker;
 
@@ -49,7 +49,9 @@ public class Program {
 
 		NaiveCypher naiveCypher = new NaiveCypher("abcdedf", StandardCharsets.UTF_8);
 
-		Worker worker = new FileWorker(naiveCypher, naiveCypher);
+		// Worker worker = new ThreadedFileWorker(naiveCypher, naiveCypher);
+		
+		Worker worker = new JoinedThreadedFileWorker(naiveCypher, naiveCypher);
 
 		try {
 			List<File> files = new ArrayList<File>();
