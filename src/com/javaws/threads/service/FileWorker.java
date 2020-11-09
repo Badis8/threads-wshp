@@ -20,6 +20,10 @@ public class FileWorker implements Worker {
 
 	private final Map<String, String> keys;
 	
+	synchronized private void put(String path, String key) {
+		this.keys.put(path, key);
+	}
+	
 	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter) {
 		super();
 		this.encrypter = encrypter;
@@ -38,12 +42,7 @@ public class FileWorker implements Worker {
 					outputFile.createNewFile();
 					String randomKey = this.encrypter.encrypt(new FileInputStream(file), new FileOutputStream(outputFile));
 	
-					// Caution here !
-					// HashMap is not thread safe
-					// meaning that this can break
-					// Try to encrypt 3000 files and see the number of keys in the hashmap
-					// generally it will be lower than 3000
-					this.keys.put(file.getAbsolutePath(), randomKey);
+					this.put(file.getAbsolutePath(), randomKey);
 					
 					System.out.println("Encryption : "+outputFile.getAbsolutePath());
 					
