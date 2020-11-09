@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 
 import com.javaws.threads.service.FileWorker;
 import com.javaws.threads.service.NaiveByteCypher;
+import com.javaws.threads.service.RandomKeyEncrypter;
+import com.javaws.threads.service.RandomKeyNaiveByteEncrypter;
 import com.javaws.threads.service.Worker;
 
 import picocli.CommandLine;
@@ -46,6 +48,10 @@ public class Program implements Callable<Integer> {
 			if (encrypt != null && !encrypt.isEmpty()) {
 				List<File> files = GET_FILES(encrypt);
 				RUN(() -> worker.encrypt(files), "Start encrypting ...");
+				worker.getKeys().forEach((p, k) -> {
+					System.out.println(p + " : "+ k);
+				});
+				System.out.println("Nb generated keys : "+ worker.getKeys().size());
 			}
 			
 			if (decrypt != null && !decrypt.isEmpty()) {
@@ -89,7 +95,8 @@ public class Program implements Callable<Integer> {
 
 	public static Worker INIT_WORKER(String key) {
 		NaiveByteCypher naiveCypher = new NaiveByteCypher(key);
-		return new FileWorker(naiveCypher, naiveCypher);
+		RandomKeyEncrypter encrypter = new RandomKeyNaiveByteEncrypter();
+		return new FileWorker(encrypter, naiveCypher);
 	}
 
 	public static void RUN(LambdaRun r, String startingMsg) throws IOException {
