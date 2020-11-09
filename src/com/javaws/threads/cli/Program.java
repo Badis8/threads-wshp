@@ -1,111 +1,109 @@
 package com.javaws.threads.cli;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import com.javaws.threads.service.JoinedThreadedFileWorker;
-import com.javaws.threads.service.NaiveCypher;
+import com.javaws.threads.service.FileWorker;
+import com.javaws.threads.service.NaiveByteCypher;
 import com.javaws.threads.service.Worker;
 
-public class Program {
+import picocli.CommandLine;
+import picocli.CommandLine.Option;
 
-	private static List<File> getDirFiles(File dir) {
-		List<String> paths = Arrays.asList(dir.list());
-		List<File> files = new ArrayList<File>();
+public class Program implements Callable<Integer> {
 
-		for (String path : paths) {
-			File f = Path.of(dir.getAbsolutePath(), path).toFile();
-			if (f.isFile()) {
-				files.add(f);
-			} else if (f.isDirectory()) {
-				files.addAll(getDirFiles(f));
-			}
+
+    @Option(names = { "-e", "--encrypt" }, description = "one or more files/folders to encrypt", arity = "0..*" )
+    private Set<File> encrypt;
+
+    @Option(names = { "-d", "--decrypt" }, description = "one or more files/folders to decrypt", arity = "0..*")
+    private Set<File> decrypt;
+    
+    @Option(names = { "-k", "--key" }, description = "encryption/decryption key", required = true)
+    private String key;
+    
+	@Override
+	public Integer call() {
+		if (key == null || key.trim().length() == 0) {
+			System.err.println("Need encryption/decryption key");
+			return 1;
 		}
-
-		return files;
+		
+		if((encrypt == null || encrypt.isEmpty()) && (decrypt == null || decrypt.isEmpty())) {
+			System.err.println("Need at least one file to encrypt/decrypt");
+			return 1;
+		}
+		
+		Worker worker = INIT_WORKER(key);
+		try {
+			if (encrypt != null && !encrypt.isEmpty()) {
+				List<File> files = GET_FILES(encrypt);
+				RUN(() -> worker.encrypt(files), "Start encrypting ...");
+			}
+			
+			if (decrypt != null && !decrypt.isEmpty()) {
+				List<File> files = GET_FILES(decrypt);
+				RUN(() -> worker.decrypt(files), "Start decrypting ...");
+			}
+			return 0;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return 1;
+		}
+	}
+	
+	public static void main(String[] args) {
+		
+        int exitCode = new CommandLine(new Program()).execute(args);
+        System.exit(exitCode);
 	}
 
-	public static void main(String[] args) {
-		if (args.length == 0) {
-			System.out.println("No commands passed");
-			System.exit(0);
-		}
+	private static List<File> GET_FILES(Set<File> files) {
+		return files.stream().flatMap(f -> {
+			if (!f.exists()) {
+				System.err.println("File " + f.toString() + " do not exists.");
+				System.exit(1);
+			}
 
-		if (!("encrypt".equals(args[0]) || "decrypt".equals(args[0]))) {
-			System.out.println("Unknown command " + args[0]);
-			System.exit(0);
-		}
+			if (f.isFile()) 
+				return Stream.of(f);
 
-		if (args.length == 1) {
-			System.out.println("No files passed");
-			System.exit(0);
-		}
-
-		NaiveCypher naiveCypher = new NaiveCypher("abcdedf", StandardCharsets.UTF_8);
-
-		// Worker worker = new ThreadedFileWorker(naiveCypher, naiveCypher);
-		
-		Worker worker = new JoinedThreadedFileWorker(naiveCypher, naiveCypher);
-
-		try {
-			List<File> files = new ArrayList<File>();
-
-			for (int i = 1; i < args.length; i++) {
-
-				File f = new File(args[i]);
-
-				if (!f.exists()) {
-					System.err.println("File " + args[i] + " do not exists.");
+			if (f.isDirectory())
+				try {
+					return Files.walk(f.toPath()).filter(Files::isRegularFile).map(Path::toFile);
+				} catch (IOException e) {
+					e.printStackTrace();
 					System.exit(1);
 				}
 
-				if (f.isFile()) {
-					files.add(f);
-
-				} else if (f.isDirectory()) {
-					files.addAll(getDirFiles(f));
-
-				}
-			}
-
-			if ("encrypt".equals(args[0])) {
-				System.out.println("Start encrypting ...");
-
-				long startTime = System.currentTimeMillis();
-
-				worker.encrypt(files);
-
-				long endTime = System.currentTimeMillis();
-
-				System.out.println("That took " + (endTime - startTime) + " milliseconds ... Kiss goodbye !");
-			} else if ("decrypt".equals(args[0])) {
-				System.out.println("Start decrypting ...");
-
-				long startTime = System.currentTimeMillis();
-
-				worker.decrypt(files);
-
-				long endTime = System.currentTimeMillis();
-
-				System.out.println("That took " + (endTime - startTime) + " milliseconds ... Kiss goodbye !");
-			} else {
-				System.out.println("Unknown command " + args[0]);
-				System.exit(0);
-			}
-
-		} catch (FileNotFoundException e) {
-			System.err.println(e.getMessage());
-			System.exit(1);
-
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+			return Stream.empty();
+		}).collect(Collectors.toList());
 	}
+
+	public static Worker INIT_WORKER(String key) {
+		NaiveByteCypher naiveCypher = new NaiveByteCypher(key);
+		return new FileWorker(naiveCypher, naiveCypher);
+	}
+
+	public static void RUN(LambdaRun r, String startingMsg) throws IOException {
+		System.out.println(startingMsg);
+
+		long startTime = System.currentTimeMillis();
+
+		r.run();
+
+		System.out.println("That took " + (System.currentTimeMillis() - startTime) + " milliseconds ... Kiss goodbye !");
+	}
+
+	static interface LambdaRun {
+		void run() throws IOException;
+	}
+
 }
