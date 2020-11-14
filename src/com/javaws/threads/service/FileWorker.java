@@ -37,8 +37,8 @@ public class FileWorker implements Worker {
 		this.notifyAll();
 	}
 	
-	synchronized private void writeKey(PrintWriter printWriter) {
-		while(currentKeyLine == null) {
+	synchronized private boolean writeKey(PrintWriter printWriter) {
+		while(keyWriteActive && currentKeyLine == null) {
 			try { 
 				this.wait();
 				
@@ -48,9 +48,13 @@ public class FileWorker implements Worker {
                 e.printStackTrace();
             }
 		}
+		if (!keyWriteActive) {
+			return false;
+		}
 		printWriter.println(this.currentKeyLine);
 		this.currentKeyLine = null;
 		this.notifyAll();
+		return true;
 	}
 	
 	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter, String keysPath) {
@@ -70,9 +74,7 @@ public class FileWorker implements Worker {
 		PrintWriter pw = new PrintWriter(keyFile);
 		
 		Thread keyThread = new Thread(() -> {
-			while(keyWriteActive) {
-				this.writeKey(pw);
-			}
+			while(this.writeKey(pw)) { }
 		});
 		
 		keyThread.start();
@@ -116,7 +118,6 @@ public class FileWorker implements Worker {
 			}
 			// Release last write
 			this.keyWriteActive = false;
-			this.currentKeyLine = "";
 			this.notifyAll();
 		}
 
