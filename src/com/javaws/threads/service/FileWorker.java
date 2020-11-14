@@ -5,11 +5,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class FileWorker implements Worker {
@@ -18,22 +17,43 @@ public class FileWorker implements Worker {
 
 	private final Decrypter decrypter;
 
-	private final Map<String, String> keys;
+	private final String keysPath;
+	
+	private String currentKeyLine;
+	
+	private boolean keyWriteActive = true;
 	
 	synchronized private void put(String path, String key) {
-		this.keys.put(path, key);
+		this.currentKeyLine = path+":"+key;
 	}
 	
-	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter) {
+	synchronized private void writeKey(PrintWriter printWriter) {
+		printWriter.println(this.currentKeyLine);
+	}
+	
+	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter, String keysPath) {
 		super();
 		this.encrypter = encrypter;
 		this.decrypter = decrypter;
-		this.keys = new HashMap<>();
+		this.keysPath = keysPath;
 	}
 
 	@Override
 	public void encrypt(List<File> files) throws FileNotFoundException, IOException {
 		Set<Thread> threads = new HashSet<>();
+		
+
+		File keyFile = Path.of(this.keysPath).toFile();
+		keyFile.createNewFile();
+		PrintWriter pw = new PrintWriter(keyFile);
+		
+		Thread keyThread = new Thread(() -> {
+			while(keyWriteActive) {
+				this.writeKey(pw);
+			}
+		});
+		
+		keyThread.start();
 		
 		for (File file : files) {
 			Thread thread = new Thread(() -> {
@@ -61,6 +81,17 @@ public class FileWorker implements Worker {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+		}
+		
+		// All encrypting threads end here
+		this.keyWriteActive = false;
+		
+		try {
+			keyThread.join();
+		} catch(InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			pw.close();
 		}
 	}
 
@@ -95,10 +126,5 @@ public class FileWorker implements Worker {
 				e.printStackTrace();
 			}
 		}
-	}
-
-	@Override
-	public Map<String, String> getKeys() {
-		return this.keys;
 	}
 }

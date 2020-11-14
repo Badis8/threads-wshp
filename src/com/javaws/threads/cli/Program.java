@@ -28,30 +28,24 @@ public class Program implements Callable<Integer> {
     @Option(names = { "-d", "--decrypt" }, description = "one or more files/folders to decrypt", arity = "0..*")
     private Set<File> decrypt;
     
-    @Option(names = { "-k", "--key" }, description = "encryption/decryption key", required = true)
+    @Option(names = { "-k", "--key" }, description = "encryption/decryption key")
     private String key;
+    
+    @Option(names = { "-kf", "--keys-file" }, description = "encryption keys output file")
+    private String keysFile;
     
 	@Override
 	public Integer call() {
-		if (key == null || key.trim().length() == 0) {
-			System.err.println("Need encryption/decryption key");
-			return 1;
-		}
-		
 		if((encrypt == null || encrypt.isEmpty()) && (decrypt == null || decrypt.isEmpty())) {
 			System.err.println("Need at least one file to encrypt/decrypt");
 			return 1;
 		}
 		
-		Worker worker = INIT_WORKER(key);
+		Worker worker = INIT_WORKER(key, keysFile);
 		try {
 			if (encrypt != null && !encrypt.isEmpty()) {
 				List<File> files = GET_FILES(encrypt);
 				RUN(() -> worker.encrypt(files), "Start encrypting ...");
-				worker.getKeys().forEach((p, k) -> {
-					System.out.println(p + " : "+ k);
-				});
-				System.out.println("Nb generated keys : "+ worker.getKeys().size());
 			}
 			
 			if (decrypt != null && !decrypt.isEmpty()) {
@@ -93,10 +87,10 @@ public class Program implements Callable<Integer> {
 		}).collect(Collectors.toList());
 	}
 
-	public static Worker INIT_WORKER(String key) {
+	public static Worker INIT_WORKER(String key, String keysPath) {
 		NaiveByteCypher naiveCypher = new NaiveByteCypher(key);
 		RandomKeyEncrypter encrypter = new RandomKeyNaiveByteEncrypter();
-		return new FileWorker(encrypter, naiveCypher);
+		return new FileWorker(encrypter, naiveCypher, keysPath);
 	}
 
 	public static void RUN(LambdaRun r, String startingMsg) throws IOException {
