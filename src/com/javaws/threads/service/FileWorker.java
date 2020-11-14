@@ -24,11 +24,33 @@ public class FileWorker implements Worker {
 	private boolean keyWriteActive = true;
 	
 	synchronized private void put(String path, String key) {
+		while(currentKeyLine != null) {
+			try { 
+                this.wait();
+            } catch (InterruptedException e)  {
+            	// https://dzone.com/articles/why-do-we-need-threadcurrentthreadinterrupt-in-int
+                Thread.currentThread().interrupt(); 
+                e.printStackTrace();
+            }
+		}
 		this.currentKeyLine = path+":"+key;
+		this.notifyAll();
 	}
 	
 	synchronized private void writeKey(PrintWriter printWriter) {
+		while(currentKeyLine == null) {
+			try { 
+				this.wait();
+				
+            } catch (InterruptedException e)  {
+            	// https://dzone.com/articles/why-do-we-need-threadcurrentthreadinterrupt-in-int
+                Thread.currentThread().interrupt(); 
+                e.printStackTrace();
+            }
+		}
 		printWriter.println(this.currentKeyLine);
+		this.currentKeyLine = null;
+		this.notifyAll();
 	}
 	
 	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter, String keysPath) {
@@ -82,10 +104,22 @@ public class FileWorker implements Worker {
 				e.printStackTrace();
 			}
 		}
-		
-		// All encrypting threads end here
-		this.keyWriteActive = false;
-		
+		synchronized (this) {
+			while(currentKeyLine != null) {
+				try { 
+	                this.wait();
+	            } catch (InterruptedException e)  {
+	            	// https://dzone.com/articles/why-do-we-need-threadcurrentthreadinterrupt-in-int
+	                Thread.currentThread().interrupt(); 
+	                e.printStackTrace();
+	            }
+			}
+			// Release last write
+			this.keyWriteActive = false;
+			this.currentKeyLine = "";
+			this.notifyAll();
+		}
+
 		try {
 			keyThread.join();
 		} catch(InterruptedException e) {
