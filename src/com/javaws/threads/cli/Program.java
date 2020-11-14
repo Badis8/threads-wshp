@@ -14,6 +14,8 @@ import com.javaws.threads.service.FileWorker;
 import com.javaws.threads.service.NaiveByteCypher;
 import com.javaws.threads.service.RandomKeyEncrypter;
 import com.javaws.threads.service.RandomKeyNaiveByteEncrypter;
+import com.javaws.threads.service.RandomKeySender;
+import com.javaws.threads.service.RandomKeyWorker;
 import com.javaws.threads.service.Worker;
 
 import picocli.CommandLine;
@@ -40,12 +42,20 @@ public class Program implements Callable<Integer> {
 			System.err.println("Need at least one file to encrypt/decrypt");
 			return 1;
 		}
-		
-		Worker worker = INIT_WORKER(key, keysFile);
+		RandomKeyWorker keyWorker = new RandomKeyWorker(keysFile);
+		Worker worker = INIT_WORKER(key, keyWorker);
 		try {
 			if (encrypt != null && !encrypt.isEmpty()) {
 				List<File> files = GET_FILES(encrypt);
+				
+				keyWorker.start();
+				Thread keyWorkerThread = new Thread(keyWorker);
+				keyWorkerThread.start();
+				
 				RUN(() -> worker.encrypt(files), "Start encrypting ...");
+				
+				keyWorker.close();
+				keyWorkerThread.join();
 			}
 			
 			if (decrypt != null && !decrypt.isEmpty()) {
@@ -53,7 +63,7 @@ public class Program implements Callable<Integer> {
 				RUN(() -> worker.decrypt(files), "Start decrypting ...");
 			}
 			return 0;
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 			return 1;
 		}
@@ -86,11 +96,12 @@ public class Program implements Callable<Integer> {
 			return Stream.empty();
 		}).collect(Collectors.toList());
 	}
+	
 
-	public static Worker INIT_WORKER(String key, String keysPath) {
+	public static Worker INIT_WORKER(String key, RandomKeySender sender) {
 		NaiveByteCypher naiveCypher = new NaiveByteCypher(key);
 		RandomKeyEncrypter encrypter = new RandomKeyNaiveByteEncrypter();
-		return new FileWorker(encrypter, naiveCypher, keysPath);
+		return new FileWorker(encrypter, naiveCypher, sender);
 	}
 
 	public static void RUN(LambdaRun r, String startingMsg) throws IOException {
