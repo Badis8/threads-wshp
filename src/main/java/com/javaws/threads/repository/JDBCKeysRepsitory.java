@@ -26,7 +26,7 @@ public class JDBCKeysRepsitory implements KeysRepository {
 	}
 
 	@Override
-	public Integer create(KeyItem keyItem) throws RepositoryException {
+	public Object create(KeyItem keyItem) throws RepositoryException {
 		Connection conn = null;
 		try {
 			conn = this.dataSource.getConnection();
@@ -41,7 +41,7 @@ public class JDBCKeysRepsitory implements KeysRepository {
 			if (updates == 1) {
 				ResultSet rs = pstmt.getGeneratedKeys();
 				if (rs.next()) {
-					return rs.getInt(1);
+					return rs.getObject(1);
 				}
 			}
 

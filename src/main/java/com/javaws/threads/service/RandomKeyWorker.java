@@ -65,8 +65,8 @@ public class RandomKeyWorker implements Runnable, RandomKeySender {
 				if (!keyWriteActive) {
 					break;
 				}
-				Integer id = this.keyRepository.create(currentKeyItem);
-				System.out.println("Inserted key ID : "+id);
+				Object id = this.keyRepository.create(currentKeyItem);
+				System.out.println("Inserted key ID : "+id+" "+id.getClass());
 				this.currentKeyItem = null;
 				this.notifyAll();
 			}
