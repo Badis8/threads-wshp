@@ -10,6 +10,8 @@ import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.dbcp2.BasicDataSource;
+
 import com.javaws.threads.repository.JDBCKeysRepsitory;
 import com.javaws.threads.repository.KeysRepository;
 import com.javaws.threads.service.FileWorker;
@@ -48,7 +50,18 @@ public class Program implements Callable<Integer> {
 			System.err.println("Need at least one file to encrypt/decrypt");
 			return 1;
 		}
-		KeysRepository keyRepository = new JDBCKeysRepsitory();
+		
+		BasicDataSource ds = new BasicDataSource();
+
+		// These should be configurations
+        ds.setUrl("jdbc:mysql://localhost:3306/keys_db?serverTimezone=UTC");
+        ds.setUsername("root");
+        ds.setPassword("root");
+        ds.setMinIdle(5);
+        ds.setMaxIdle(10);
+        ds.setMaxOpenPreparedStatements(100);
+		
+		KeysRepository keyRepository = new JDBCKeysRepsitory(ds);
 		RandomKeyWorker keyWorker = new RandomKeyWorker(keyRepository);
 		
 		Worker worker = INIT_WORKER(key, keyWorker, nbThreads);

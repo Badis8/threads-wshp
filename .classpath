@@ -8,5 +8,8 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/picocli-4.5.2.jar"/>
 	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/mysql-connector-java-8.0.22.jar"/>
+	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/commons-dbcp2-2.8.0.jar"/>
+	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/commons-pool2-2.9.0.jar"/>
+	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/commons-logging-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

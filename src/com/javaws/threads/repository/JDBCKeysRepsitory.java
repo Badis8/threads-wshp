@@ -1,11 +1,12 @@
 package com.javaws.threads.repository;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import javax.sql.DataSource;
 
 /**
  * CREATE DATABASE keys_db;
@@ -16,18 +17,19 @@ import java.sql.Statement;
  */
 public class JDBCKeysRepsitory implements KeysRepository {
 
-	// These should be configurations
-	private final static String CONN_STR = "jdbc:mysql://localhost:3306/keys_db?serverTimezone=UTC";
-
-	private final static String USER = "root";
-
-	private final static String PWD = "root";
+	
+	private final DataSource dataSource;
+	
+	public JDBCKeysRepsitory(DataSource dataSource) {
+		super();
+		this.dataSource = dataSource;
+	}
 
 	@Override
 	public Integer create(KeyItem keyItem) throws RepositoryException {
 		Connection conn = null;
 		try {
-			conn = DriverManager.getConnection(CONN_STR, USER, PWD);
+			conn = this.dataSource.getConnection();
 
 			String sql = "INSERT INTO KEYS_TBL(PATH, KEY_STR) VALUES(?,?)";
 
@@ -45,13 +47,14 @@ public class JDBCKeysRepsitory implements KeysRepository {
 
 		} catch (SQLException e) {
 			throw new RepositoryException(e);
+			
 		} finally {
 			try {
 				if (conn != null) {
 					conn.close();
 				}
-			} catch (SQLException ex) {
-				System.out.println(ex.getMessage());
+			} catch (SQLException e) {
+				throw new RepositoryException(e);
 			}
 		}
 
