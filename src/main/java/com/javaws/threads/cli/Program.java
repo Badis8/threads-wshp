@@ -50,13 +50,21 @@ public class Program implements Callable<Integer> {
 			System.err.println("Need at least one file to encrypt/decrypt");
 			return 1;
 		}
+		DatabaseConfig config = null;
+		
+		try {
+			config = new DatabaseConfig();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return 2;
+		}
 		
 		BasicDataSource ds = new BasicDataSource();
 
 		// These should be configurations
-        ds.setUrl("jdbc:mysql://localhost:3306/keys_db?serverTimezone=UTC");
-        ds.setUsername("root");
-        ds.setPassword("root");
+        ds.setUrl(config.getConnStr());
+        ds.setUsername(config.getUser());
+        ds.setPassword(config.getPwd());
         ds.setMinIdle(5);
         ds.setMaxIdle(10);
         ds.setMaxOpenPreparedStatements(100);
