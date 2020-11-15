@@ -31,8 +31,19 @@ public class ThreadPool {
  
     public void shutdown() {
         System.out.println("Shutting down thread pool");
+        EOSRunnable eos = new EOSRunnable();
         for (int i = 0; i < workers.length; i++) {
-            workers[i] = null;
+        	this.add(eos);
+        }
+        for (int i = 0; i < workers.length; i++) {
+        	try {
+				workers[i].join();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				e.printStackTrace();
+			} finally {
+				workers[i] = null;
+			}
         }
     }
 }

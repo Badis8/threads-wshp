@@ -36,6 +36,10 @@ public class Program implements Callable<Integer> {
     @Option(names = { "-kf", "--keys-file" }, description = "encryption keys output file")
     private String keysFile;
     
+    
+    @Option(names = { "-nt", "--nb-threads" }, description = "number of threads used for encryption", defaultValue = "3")
+    private Integer nbThreads;
+    
 	@Override
 	public Integer call() {
 		if((encrypt == null || encrypt.isEmpty()) && (decrypt == null || decrypt.isEmpty())) {
@@ -43,7 +47,7 @@ public class Program implements Callable<Integer> {
 			return 1;
 		}
 		RandomKeyWorker keyWorker = new RandomKeyWorker(keysFile);
-		Worker worker = INIT_WORKER(key, keyWorker);
+		Worker worker = INIT_WORKER(key, keyWorker, nbThreads);
 		try {
 			if (encrypt != null && !encrypt.isEmpty()) {
 				List<File> files = GET_FILES(encrypt);
@@ -98,10 +102,10 @@ public class Program implements Callable<Integer> {
 	}
 	
 
-	public static Worker INIT_WORKER(String key, RandomKeySender sender) {
+	public static Worker INIT_WORKER(String key, RandomKeySender sender, Integer nbThreads) {
 		NaiveByteCypher naiveCypher = new NaiveByteCypher(key);
 		RandomKeyEncrypter encrypter = new RandomKeyNaiveByteEncrypter();
-		return new FileWorker(encrypter, naiveCypher, sender);
+		return new FileWorker(encrypter, naiveCypher, sender, nbThreads);
 	}
 
 	public static void RUN(LambdaRun r, String startingMsg) throws IOException {

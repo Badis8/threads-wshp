@@ -21,16 +21,19 @@ public class FileWorker implements Worker {
 	
 	private final RandomKeySender keySender;
 	
-	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter, RandomKeySender keySender) {
+	private final Integer nbThreads;
+	
+	public FileWorker(RandomKeyEncrypter encrypter, Decrypter decrypter, RandomKeySender keySender, Integer nbThreads) {
 		super();
 		this.encrypter = encrypter;
 		this.decrypter = decrypter;
 		this.keySender = keySender;
+		this.nbThreads = nbThreads;
 	}
 
 	@Override
 	public void encrypt(List<File> files) throws FileNotFoundException, IOException {
-		ThreadPool pool = new ThreadPool(4);
+		ThreadPool pool = new ThreadPool(nbThreads);
 		CountDownLatch latch = new CountDownLatch(files.size());
 		
 		for (File file : files) {

@@ -20,7 +20,9 @@ public class WorkerRunnable implements Runnable {
 				// https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/BlockingQueue.html
 				task = (Runnable) queue.take();
 				task.run();
-
+				if (task instanceof EOSRunnable) {
+					break;
+				}
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				e.printStackTrace();
