@@ -1,34 +1,24 @@
 package com.javaws.threads.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Path;
+import com.javaws.threads.repository.KeyItem;
+import com.javaws.threads.repository.KeysRepository;
 
 public class RandomKeyWorker implements Runnable, RandomKeySender {
 
-	private PrintWriter pw;
+	private final KeysRepository keyRepository;
 
-	private final String path;
-
-	private String currentKeyLine;
-
+	private KeyItem currentKeyItem;
+	
 	private boolean keyWriteActive = true;
 
-	public RandomKeyWorker(String path) {
+	public RandomKeyWorker(KeysRepository keyRepository) {
 		super();
-		this.path = path;
-	}
-
-	public void start() throws IOException {
-		File file = Path.of(path).toFile();
-		file.createNewFile();
-		this.pw = new PrintWriter(file);
+		this.keyRepository = keyRepository;
 	}
 
 	@Override
 	synchronized public void send(String path, String key) {
-		while (currentKeyLine != null) {
+		while (currentKeyItem != null) {
 			try {
 				this.wait();
 			} catch (InterruptedException e) {
@@ -37,13 +27,13 @@ public class RandomKeyWorker implements Runnable, RandomKeySender {
 				e.printStackTrace();
 			}
 		}
-		this.currentKeyLine = path + ":" + key;
+		this.currentKeyItem = new KeyItem(path, key);
 		this.notifyAll();
 
 	}
 
 	synchronized public void close() {
-		while (currentKeyLine != null) {
+		while (currentKeyItem != null) {
 			try {
 				this.wait();
 			} catch (InterruptedException e) {
@@ -55,7 +45,6 @@ public class RandomKeyWorker implements Runnable, RandomKeySender {
 
 		this.keyWriteActive = false;
 		this.notifyAll();
-		this.pw.close();
 	}
 
 	@Override
@@ -63,7 +52,7 @@ public class RandomKeyWorker implements Runnable, RandomKeySender {
 		synchronized (this) {
 			while (this.keyWriteActive) {
 
-				while (this.keyWriteActive && currentKeyLine == null) {
+				while (this.keyWriteActive && currentKeyItem == null) {
 					try {
 						this.wait();
 
@@ -76,8 +65,9 @@ public class RandomKeyWorker implements Runnable, RandomKeySender {
 				if (!keyWriteActive) {
 					break;
 				}
-				this.pw.println(this.currentKeyLine);
-				this.currentKeyLine = null;
+				Integer id = this.keyRepository.create(currentKeyItem);
+				System.out.println("Inserted key ID : "+id);
+				this.currentKeyItem = null;
 				this.notifyAll();
 			}
 

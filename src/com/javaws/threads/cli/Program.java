@@ -10,6 +10,8 @@ import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.javaws.threads.repository.JDBCKeysRepsitory;
+import com.javaws.threads.repository.KeysRepository;
 import com.javaws.threads.service.FileWorker;
 import com.javaws.threads.service.NaiveByteCypher;
 import com.javaws.threads.service.RandomKeyEncrypter;
@@ -46,13 +48,14 @@ public class Program implements Callable<Integer> {
 			System.err.println("Need at least one file to encrypt/decrypt");
 			return 1;
 		}
-		RandomKeyWorker keyWorker = new RandomKeyWorker(keysFile);
+		KeysRepository keyRepository = new JDBCKeysRepsitory();
+		RandomKeyWorker keyWorker = new RandomKeyWorker(keyRepository);
+		
 		Worker worker = INIT_WORKER(key, keyWorker, nbThreads);
 		try {
 			if (encrypt != null && !encrypt.isEmpty()) {
 				List<File> files = GET_FILES(encrypt);
 				
-				keyWorker.start();
 				Thread keyWorkerThread = new Thread(keyWorker);
 				keyWorkerThread.start();
 				

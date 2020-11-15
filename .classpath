@@ -7,5 +7,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/picocli-4.5.2.jar"/>
+	<classpathentry kind="lib" path="D:/wspc/eclipse_default/libraries/mysql-connector-java-8.0.22.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
