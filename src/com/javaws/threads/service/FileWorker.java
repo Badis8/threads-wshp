@@ -10,8 +10,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
-import com.javaws.threads.utilities.ThreadPool;
+import com.javaws.threads.utilities.IDThreadFactory;
 
 public class FileWorker implements Worker {
 
@@ -33,12 +36,11 @@ public class FileWorker implements Worker {
 
 	@Override
 	public void encrypt(List<File> files) throws FileNotFoundException, IOException {
-		ThreadPool pool = new ThreadPool(nbThreads);
+		ThreadPoolExecutor pool =  (ThreadPoolExecutor) Executors.newFixedThreadPool(nbThreads, new IDThreadFactory());
 		CountDownLatch latch = new CountDownLatch(files.size());
 		
 		for (File file : files) {
-			
-			pool.add(() -> {
+			pool.submit(() -> {
 				try {
 					File outputFile = Path.of(file.getAbsolutePath() + "._locked").toFile();
 					outputFile.createNewFile();
@@ -55,15 +57,24 @@ public class FileWorker implements Worker {
 				}
 			});
 		}
-		
+
 		try {
 			latch.await();
 		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
+	        Thread.currentThread().interrupt();
 			e.printStackTrace();
 		} finally {
 			pool.shutdown();
+		    try {
+		        if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {
+		        	pool.shutdownNow();
+		        }
+		    } catch (InterruptedException ex) {
+		    	pool.shutdownNow();
+		        Thread.currentThread().interrupt();
+		    }
 		}
+
 	}
 
 	@Override

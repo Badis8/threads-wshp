@@ -1,12 +1,13 @@
 package com.javaws.threads.utilities;
 
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class IDThreadFactory {
+public class IDThreadFactory implements ThreadFactory {
 
 	private final AtomicInteger counter = new AtomicInteger(0);
 	
-	public Thread generate(Runnable r) {
+	public Thread newThread(Runnable r) {
 		return new Thread(() -> {
 			System.out.println("Starting thread : "+ Thread.currentThread().getName());
 			try {
@@ -16,5 +17,6 @@ public class IDThreadFactory {
 			}
 		}, "["+ counter.getAndIncrement()+"]" );
 	}
+
 
 }
